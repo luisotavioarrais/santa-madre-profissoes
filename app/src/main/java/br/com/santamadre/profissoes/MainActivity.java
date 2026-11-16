@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
       if ("medico".equals(queryJob) || "advogado".equals(queryJob) ||
           "escritor".equals(queryJob) || "empresario".equals(queryJob)) job = queryJob;
     }
-    view.loadUrl(ORIGIN + "/assets/index.html?job=" + job);
+    view.loadUrl(ORIGIN + "/assets/photo.html?job=" + job);
   }
 
   @Override protected void onNewIntent(Intent intent) {
