@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>Santa Madre • Meu Futuro</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#091b39;color:white;font-family:system-ui,Arial,sans-serif}header{background:#fff;color:#092f6d;padding:13px 15px;text-align:center}header b{font-size:19px}header small{display:block;color:#6c7785;font-size:12px}.wrap{max-width:630px;margin:auto;padding:12px}.jobs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 12px}.job{background:#17345e;border:2px solid #294c80;color:white;padding:8px 3px;border-radius:12px;font-size:12px}.job i{display:block;font-style:normal;font-size:24px}.job.active{border-color:#f6bc3e;background:#34598a}.camera{background:#061123;min-height:330px;width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;position:relative;border:2px solid #294c80}canvas{width:100%;height:100%;object-fit:contain;display:block}.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center;color:#bccce6;gap:12px}.placeholder i{font-size:65px}.pill{position:absolute;top:9px;left:9px;background:#071a34bb;padding:7px 10px;border-radius:30px;font-size:12px}.controls{display:flex;gap:8px;margin-top:10px}.controls button,.extra button{border:0;border-radius:11px;background:#f6ba37;color:#162846;font-weight:700;padding:13px 10px;flex:1}.controls button.secondary{background:#d7e3f9}.controls button:disabled{opacity:.4}.extra{background:#122c53;padding:12px;border-radius:12px;margin-top:12px}.extra label{display:flex;justify-content:space-between;font-size:13px;margin:10px 0 5px}.extra input[type=range]{width:100%;accent-color:#f6bc3e}.hint{font-size:12px;color:#b3c8de;line-height:1.5;margin:10px 0}.status{font-size:12px;text-align:center;color:#f6bc3e;margin:8px}video{display:none}
+</style></head><body>
+<header><b>COLÉGIO SANTA MADRE</b><small>MEU FUTURO PROFISSIONAL</small></header>
+<div class="wrap"><div class="jobs" id="jobs"></div>
+<div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="placeholder" id="placeholder"><i>📷</i><strong>Vista seu futuro!</strong><span>Escolha uma profissão e toque em “Abrir câmera”.</span></div><span class="pill" id="chosen">ESCRITOR</span></div>
+<div class="controls"><button id="start">📷 Abrir câmera</button><button id="turn" class="secondary" disabled>↻ Virar</button><button id="photo" disabled>📸 Foto</button></div>
+<div class="status" id="status">Selecione uma profissão.</div>
+<div class="extra"><strong>⚙️ Ajustes do uniforme</strong><label>Tamanho <span id="sizeText">100%</span></label><input type="range" id="size" min="40" max="220" value="100"><label>Deslocar para os lados</label><input type="range" id="dx" min="-250" max="250" value="0"><label>Deslocar para cima/baixo</label><input type="range" id="dy" min="-250" max="250" value="0"><label><span>Acompanhar o tronco automaticamente</span><input type="checkbox" id="follow" checked></label><button id="reset">Restaurar posição</button></div>
+<p class="hint">Versão de teste: a roupa acompanha aproximadamente os ombros, sem acompanhar os braços. Se a identificação falhar, ajuste manualmente. A foto abre em outra tela para salvar. Internet necessária para o rastreamento.</p></div>
+<script>
+const J={
+escritor:{title:"Escritor",emoji:"✍️",base:"#b48d60",collar:"#fff0cf",accent:"#5b3426",type:"tie"},
+advogado:{title:"Advogado",emoji:"⚖️",base:"#202d3d",collar:"#fafafa",accent:"#bd9a53",type:"tie"},
+medico:{title:"Médico",emoji:"🩺",base:"#f7fbff",collar:"#91cbec",accent:"#2094c5",type:"coat"},
+empresario:{title:"Empresário",emoji:"💼",base:"#354f78",collar:"#fdfdfd",accent:"#dcad3c",type:"tie"}};
+const $=id=>document.getElementById(id),video=$("video"),canvas=$("canvas"),ctx=canvas.getContext("2d");
+let job=new URLSearchParams(location.search).get("job");if(!J[job])job="escritor";
+let stream=null,running=false,front=true,pose=null,points=null,updated=0,detectBusy=false;
+let size=1,dx=0,dy=0;
+for(const [id,j] of Object.entries(J)){const b=document.createElement("button");b.className="job";b.innerHTML="<i>"+j.emoji+"</i>"+j.title;b.onclick=()=>select(id);b.dataset.id=id;$("jobs").append(b)}
+function select(id){job=id;$("chosen").textContent=J[id].title.toUpperCase();document.querySelectorAll(".job").forEach(b=>b.classList.toggle("active",b.dataset.id===id))}
+select(job);
+function status(s){$("status").textContent=s}
+function costumeSvg(id){const a=J[id],coat=id==="medico",robe=id==="advogado";
+return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 820">'+
+'<path d="M180 74 L250 30 Q300 70 350 30 L420 74 Q540 110 589 245 L519 290 L485 227 L480 798 L120 798 L115 227 L81 290 L11 245 Q60 110 180 74Z" fill="'+a.base+'" stroke="#152439" stroke-width="8"/>'+
+'<path d="M244 29 L300 124 L356 29 L381 86 L344 244 L300 185 L256 244 L219 86Z" fill="'+a.collar+'" stroke="#51627b" stroke-width="5"/>'+
+(coat?'<path d="M282 122 L260 770 L125 770 L120 222 L178 76 L250 59 L222 199 L270 243 Z M318 122 L340 770 L475 770 L480 222 L422 76 L350 59 L378 199 L330 243Z" fill="#fff" stroke="#cadbe4" stroke-width="5"/><path d="M190 400 h70 v90 h-70z M340 400 h70 v90 h-70z" fill="#d8eef6" stroke="#89b5c8" stroke-width="4"/><path d="M370 335 Q430 340 420 420 Q400 450 350 415" stroke="#279ac2" fill="none" stroke-width="14"/><circle cx="351" cy="415" r="20" fill="#36475f"/>':
+'<path d="M300 124 l-27 38 27 51 27-51z M300 204 l-31 240 31 50 31-50z" fill="'+a.accent+'"/><path d="M215 83 L290 244 L252 286 L181 111Z M385 83 L310 244 L348 286 L419 111Z" fill="#ffffff22" stroke="#9badba" stroke-width="5"/>'+
+(robe?'<path d="M140 370 Q300 430 460 370 M140 550 Q300 610 460 550" fill="none" stroke="#aa9059" stroke-width="12"/>':'') )+
+'<path d="M218 70 Q300 150 382 70" fill="none" stroke="#ffffff22" stroke-width="8"/>'+
+'<path d="M120 782 L480 782" stroke="#172740" stroke-width="12"/>'+
+'</svg>'}
+const images={};for(const id of Object.keys(J)){images[id]=new Image();images[id].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(costumeSvg(id))}
+function frame(){if(!running)return;if(video.videoWidth){const w=video.videoWidth,h=video.videoHeight;if(canvas.width!==w){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);ctx.save();if(front){ctx.translate(w,0);ctx.scale(-1,1)}ctx.drawImage(video,0,0,w,h);ctx.restore();let cx=w*.5,sy=h*.32,shoulder=w*.35;if($("follow").checked&&points&&performance.now()-updated<1800){cx=points.cx*w;sy=points.sy*h;shoulder=points.shoulder*w}const ww=Math.max(w*.17,shoulder*1.7)*size,hh=ww*820/600;const x=cx-ww/2+dx*w/600,y=sy-ww*.16+dy*h/800;const img=images[job];if(img.complete&&img.naturalWidth)ctx.drawImage(img,x,y,ww,hh)}requestAnimationFrame(frame)}
+async function start(){running=false;if(stream)stream.getTracks().forEach(t=>t.stop());points=null;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:front?"user":"environment"},width:{ideal:720},height:{ideal:960}},audio:false});video.srcObject=stream;await video.play();$("placeholder").style.display="none";$("turn").disabled=false;$("photo").disabled=false;running=true;status("Câmera aberta");requestAnimationFrame(frame);if(!pose)await loadPose();track();}catch(e){status("Erro ao abrir câmera: "+e.message)}}
+async function loadPose(){try{if(!window.Pose){await new Promise((ok,bad)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js";s.onload=ok;s.onerror=bad;document.head.append(s)})}pose=new Pose({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/"+f});pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.45,minTrackingConfidence:.4});pose.onResults(r=>{let v=r.poseLandmarks;if(!v||!v[11]||!v[12])return;const l=v[11],rr=v[12];if(l.visibility<.35||rr.visibility<.35)return;let next={cx:front?1-(l.x+rr.x)/2:(l.x+rr.x)/2,sy:(l.y+rr.y)/2,shoulder:Math.hypot(l.x-rr.x,l.y-rr.y)};if(points)for(const k in next)next[k]=points[k]*.73+next[k]*.27;points=next;updated=performance.now();status("Acompanhando o tronco ✓")});}catch(e){status("Modo manual ativado: sem rastreamento")}}
+async function track(){while(running){if(pose&&video.readyState>=2&&!detectBusy){detectBusy=true;try{await pose.send({image:video})}catch(e){pose=null;status("Use os ajustes manuais")}finally{detectBusy=false}}await new Promise(r=>setTimeout(r,130))}}
+$("start").onclick=start;$("turn").onclick=()=>{front=!front;start()};
+$("photo").onclick=()=>{const url=canvas.toDataURL("image/png");const w=window.open();if(w){w.document.write('<meta name="viewport" content="width=device-width"><body style="background:#111;margin:0"><img src="'+url+'" style="width:100%"><p style="color:white;text-align:center">Toque e segure a imagem para salvar.</p></body>')}else status("Não foi possível abrir a foto")};
+$("size").oninput=e=>{size=e.target.value/100;$("sizeText").textContent=e.target.value+"%"};
+$("dx").oninput=e=>dx=Number(e.target.value);$("dy").oninput=e=>dy=Number(e.target.value);
+$("reset").onclick=()=>{for(const id of ["dx","dy"]){$(id).value=0;$(id).dispatchEvent(new Event("input"))}$("size").value=100;$("size").dispatchEvent(new Event("input"))};
+window.addEventListener("pagehide",()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
+</script></body></html>
