@@ -134,7 +134,16 @@ function frame(){
     if(front){ctx.translate(w,0);ctx.scale(-1,1)}
     ctx.drawImage(video,-ox,-oy,video.videoWidth*scale,video.videoHeight*scale);
     ctx.restore();
-    if(points&&performance.now()-updated<1600)drawClothing(points,w,h,scale,ox,oy);
+    if(points&&performance.now()-updated<1600){
+      let rendered=false;
+      if(window.outfit3D && lastQrJob){
+        try{
+          const overlay=window.outfit3D.render(job,points,video.videoWidth,video.videoHeight,scale,ox,oy,front);
+          if(overlay){ctx.drawImage(overlay,0,0,w,h);rendered=true;}
+        }catch(err){console.warn("3D fallback:",err)}
+      }
+      if(!rendered)drawClothing(points,w,h,scale,ox,oy);
+    }
   }
   requestAnimationFrame(frame);
 }
@@ -155,4 +164,4 @@ $("turn").onclick=()=>{front=!front;start()};
 $("photo").onclick=()=>{const url=canvas.toDataURL("image/png");const w=window.open();if(w){w.document.write('<meta name="viewport" content="width=device-width"><body style="background:#111;margin:0"><img src="'+url+'" style="width:100%"><p style="color:white;text-align:center">Toque e segure a imagem para salvar.</p></body>')}else status("Não foi possível abrir a foto")};
 window.addEventListener("pagehide",()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
 window.addEventListener("load",()=>{start()});
-</script></body></html>
+</script><script type="module" src="renderer3d.js"></script></body></html>
