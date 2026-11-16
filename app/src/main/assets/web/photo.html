@@ -29,6 +29,7 @@ video{display:none}.output{display:none;object-fit:contain;background:#061227}
 <div id="consent"><div class="dialog"><strong>Autorizar processamento da fotografia?</strong>
 <p>Para gerar a imagem com uniforme profissional, a fotografia será enviada ao servidor privado configurado para o Colégio Santa Madre. Não use fotografias de crianças sem autorização de seus responsáveis.</p>
 <button id="allow">Autorizar e gerar foto</button><button id="deny" class="cancel">Cancelar</button></div></div>
+<script src="photo-config.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const JOBS={escritor:"ESCRITOR",advogado:"ADVOGADO",medico:"MÉDICO",empresario:"EMPRESÁRIO"};
@@ -111,5 +112,4 @@ $("flip").onclick=()=>{facing=facing==="environment"?"user":"environment";camera
 window.addEventListener("pagehide",()=>{active=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
 loadScanner();camera();
 </script>
-<script src="photo-config.js"></script>
 </body></html>
