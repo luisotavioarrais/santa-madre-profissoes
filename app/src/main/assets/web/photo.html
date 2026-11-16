@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Santa Madre | Foto das Profissões</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#07142d;color:#fff;font-family:system-ui,Arial,sans-serif}
+.shell{width:min(100%,480px);margin:auto}header{background:#fff;color:#153b7b;padding:12px;text-align:center;font-size:16px;font-weight:800}
+header small{display:block;font-size:11px;font-weight:500;color:#5a6a80}
+.viewer{position:relative;width:100%;aspect-ratio:9/16;background:#0b1d38;overflow:hidden}
+video,canvas,.output{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+video{display:none}.output{display:none;object-fit:contain;background:#061227}
+.overlay{position:absolute;top:14px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none}
+.chip{background:#061d3be0;border:1px solid #ffffff55;padding:8px 11px;border-radius:20px;font-weight:750;font-size:12px}
+.message{position:absolute;bottom:14px;left:12px;right:12px;text-align:center;background:#071b35dc;border-radius:10px;padding:11px;font-size:12px}
+.controls{display:flex;gap:12px;padding:12px}.controls button{border:0;border-radius:14px;background:#f4bd40;color:#10274e;font-size:15px;font-weight:800;padding:14px 10px;flex:1}
+.controls button.secondary{background:#d9e4f6}.controls button:disabled{opacity:.5}
+.note{color:#c5d5e8;font-size:12px;padding:0 16px 16px;text-align:center}
+#consent{display:none;position:fixed;inset:0;background:#000b;z-index:5;align-items:center;justify-content:center;padding:18px}
+#consent .dialog{max-width:400px;background:#fff;color:#152c45;border-radius:18px;padding:23px;line-height:1.5}
+#consent button{background:#164890;color:#fff;border:0;padding:13px;border-radius:10px;width:100%;font-weight:700;margin-top:10px}
+#consent button.cancel{background:#e9edf4;color:#243a56}
+</style></head>
+<body><div class="shell"><header>COLÉGIO SANTA MADRE<small>MEU FUTURO PROFISSIONAL • FOTO COM IA</small></header>
+<div class="viewer"><video id="video" playsinline autoplay muted></video><canvas id="canvas"></canvas><img id="output" class="output" alt="Foto final da experiência">
+<div class="overlay"><span class="chip" id="job">APONTE PARA O QR CODE</span><span class="chip" id="engine">FOTO</span></div>
+<div class="message" id="status">Abrindo câmera...</div></div>
+<div class="controls"><button id="flip" class="secondary">↻ Trocar câmera</button><button id="snap">📸 Bater foto</button></div>
+<p class="note">Enquadre o QR Code para escolher a profissão. Depois fotografe a criança ou adulto de frente. A troca realista de roupa exige um servidor de IA privado configurado.</p>
+</div>
+<div id="consent"><div class="dialog"><strong>Autorizar processamento da fotografia?</strong>
+<p>Para gerar a imagem com uniforme profissional, a fotografia será enviada ao servidor privado configurado para o Colégio Santa Madre. Não use fotografias de crianças sem autorização de seus responsáveis.</p>
+<button id="allow">Autorizar e gerar foto</button><button id="deny" class="cancel">Cancelar</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const JOBS={escritor:"ESCRITOR",advogado:"ADVOGADO",medico:"MÉDICO",empresario:"EMPRESÁRIO"};
+const video=$("video"),canvas=$("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
+let facing="environment",stream=null,active=true,job=null,qr=null,scanBusy=false,lastCheck=0,photoBlob=null;
+const endpoint=(window.SANTA_MADRE_PHOTO_API||"").trim();
+let scanCanvas=document.createElement("canvas"),scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true});
+function status(v){$("status").textContent=v}
+function parseQR(v){
+ try{const u=new URL(v);if(u.protocol==="santamadre:"&&u.hostname==="profissao"){const j=u.searchParams.get("job");return JOBS[j]?j:null}}
+ catch(e){}
+ return null;
+}
+function chooseJob(j){job=j;$("job").textContent=JOBS[j];status("Profissão identificada. Enquadre a pessoa e toque em Bater foto.")}
+async function loadScanner(){
+ try{
+  await new Promise((ok,fail)=>{let s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";s.onload=ok;s.onerror=fail;document.head.append(s)});
+  qr=window.jsQR;
+ }catch(e){status("Leitor QR indisponível. Conecte-se à internet.")}
+}
+async function camera(){
+ active=false;if(stream)for(const t of stream.getTracks())t.stop();
+ $("output").style.display="none";$("snap").disabled=true;
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1080},height:{ideal:1920}},audio:false});
+  video.srcObject=stream;await video.play();
+  active=true;$("snap").disabled=false;status(job?"Enquadre a pessoa e bata a foto.":"Aponte a câmera para um QR Code.");
+  requestAnimationFrame(render);
+ }catch(e){status("Não foi possível abrir câmera: "+e.message)}
+}
+function render(){
+ if(!active)return;
+ if(video.videoWidth){
+  const w=720,h=1280;
+  if(canvas.width!==w){canvas.width=w;canvas.height=h}
+  let scale=Math.max(w/video.videoWidth,h/video.videoHeight);
+  let ox=(video.videoWidth*scale-w)/2,oy=(video.videoHeight*scale-h)/2;
+  ctx.clearRect(0,0,w,h);ctx.save();
+  if(facing==="user"){ctx.translate(w,0);ctx.scale(-1,1)}
+  ctx.drawImage(video,-ox,-oy,video.videoWidth*scale,video.videoHeight*scale);ctx.restore();
+  if(!job){ctx.strokeStyle="#f4bd40";ctx.lineWidth=7;ctx.strokeRect(w*.17,h*.29,w*.66,h*.37)}
+  if(qr&&(!job||performance.now()-lastCheck>1200)&&performance.now()-lastCheck>260&&!scanBusy){
+   lastCheck=performance.now();scanBusy=true;
+   try{
+    scanCanvas.width=360;scanCanvas.height=Math.round(video.videoHeight*360/video.videoWidth);
+    scanCtx.drawImage(video,0,0,scanCanvas.width,scanCanvas.height);
+    const pixels=scanCtx.getImageData(0,0,scanCanvas.width,scanCanvas.height);
+    const code=qr(pixels.data,scanCanvas.width,scanCanvas.height,{inversionAttempts:"attemptBoth"});
+    const picked=code&&parseQR(code.data);if(picked&&picked!==job)chooseJob(picked);
+   }catch(e){}finally{scanBusy=false}
+  }
+ }
+ requestAnimationFrame(render);
+}
+function snapshot(){return new Promise((ok,fail)=>canvas.toBlob(b=>b?ok(b):fail(new Error("Falha ao fotografar")),"image/jpeg",.94))}
+async function generate(){
+ $("consent").style.display="none";
+ if(!endpoint){status("Foto pronta, mas a IA ainda não tem servidor configurado. A foto não foi enviada.");showBlob(photoBlob);return}
+ status("Gerando uniforme com IA...");$("snap").disabled=true;
+ try{
+  const data=new FormData();data.append("profession",job);data.append("photo",photoBlob,"foto.jpg");
+  const response=await fetch(endpoint,{method:"POST",body:data,credentials:"include",cache:"no-store"});
+  if(!response.ok)throw new Error("Servidor respondeu "+response.status);
+  const result=await response.blob();if(!result.type.startsWith("image/"))throw new Error("Resposta inválida");
+  showBlob(result);status("Foto com uniforme gerada. Toque e segure para salvar.");
+ }catch(e){showBlob(photoBlob);status("IA indisponível: "+e.message+". Exibindo foto original.")}
+ finally{$("snap").disabled=false}
+}
+function showBlob(blob){const previous=$("output").dataset.url;if(previous)URL.revokeObjectURL(previous);
+ const url=URL.createObjectURL(blob);$("output").dataset.url=url;$("output").src=url;$("output").style.display="block"}
+$("snap").onclick=async()=>{
+ if($("output").style.display==="block"){$("output").style.display="none";status("Aponte para outra profissão ou fotografe novamente.");return}
+ if(!job){status("Primeiro aponte a câmera para um dos quatro QR Codes.");return}
+ photoBlob=await snapshot();
+ if(!endpoint){showBlob(photoBlob);status("Foto capturada. Para vestir com IA, configure o servidor no projeto.");return}
+ $("consent").style.display="flex";
+};
+$("allow").onclick=generate;$("deny").onclick=()=>{$("consent").style.display="none";photoBlob=null;status("Processamento cancelado; foto não enviada.")};
+$("flip").onclick=()=>{facing=facing==="environment"?"user":"environment";camera()};
+window.addEventListener("pagehide",()=>{active=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
+loadScanner();camera();
+</script>
+<script src="photo-config.js"></script>
+</body></html>
