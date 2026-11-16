@@ -9,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -16,6 +17,11 @@ MAX_DIM = 2048
 GARMENTS = {"escritor", "advogado", "medico", "empresario"}
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="Santa Madre - Prova Virtual")
+app.add_middleware(CORSMiddleware,
+    allow_origins=["https://appassets.androidplatform.net"],
+    allow_methods=["POST", "GET"], allow_headers=["Content-Type"],
+    allow_credentials=True,
+)
 
 @lru_cache(maxsize=1)
 def get_pipeline():
