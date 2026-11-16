@@ -5,11 +5,11 @@
 </style></head><body>
 <header><b>COLÉGIO SANTA MADRE</b><small>MEU FUTURO PROFISSIONAL</small></header>
 <div class="wrap"><div class="jobs" id="jobs"></div>
-<div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="placeholder" id="placeholder"><i>📷</i><strong>Vista seu futuro!</strong><span>Escolha uma profissão e toque em “Abrir câmera”.</span></div><span class="pill" id="chosen">ESCRITOR</span></div>
+<div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="placeholder" id="placeholder"><i>📷</i><strong>Vista seu futuro!</strong><span>Aponte a câmera para um dos quatro QR Codes. A roupa será escolhida automaticamente.</span></div><span class="pill" id="chosen">ESCRITOR</span></div>
 <div class="controls"><button id="start">📷 Abrir câmera</button><button id="turn" class="secondary" disabled>↻ Virar</button><button id="photo" disabled>📸 Foto</button></div>
-<div class="status" id="status">Selecione uma profissão.</div>
+<div class="status" id="status">Aponte para um QR Code para identificar a profissão.</div>
 <div class="extra"><strong>⚙️ Ajustes do uniforme</strong><label>Tamanho <span id="sizeText">100%</span></label><input type="range" id="size" min="40" max="220" value="100"><label>Deslocar para os lados</label><input type="range" id="dx" min="-250" max="250" value="0"><label>Deslocar para cima/baixo</label><input type="range" id="dy" min="-250" max="250" value="0"><label><span>Acompanhar o tronco automaticamente</span><input type="checkbox" id="follow" checked></label><button id="reset">Restaurar posição</button></div>
-<p class="hint">Versão de teste: a roupa acompanha aproximadamente os ombros, sem acompanhar os braços. Se a identificação falhar, ajuste manualmente. A foto abre em outra tela para salvar. Internet necessária para o rastreamento.</p></div>
+<p class="hint">Comece com a câmera traseira, aponte para o QR Code da profissão e depois enquadre a criança inteira (ombros e quadril visíveis). A roupa acompanha automaticamente o tamanho do tronco. Acompanhar braços e pernas ainda não faz parte deste protótipo. O botão Virar troca a câmera. Internet é necessária para detectar QR Codes e corpo.</p></div>
 <script>
 const J={
 escritor:{title:"Escritor",emoji:"✍️",base:"#b48d60",collar:"#fff0cf",accent:"#5b3426",type:"tie"},
@@ -18,7 +18,44 @@ medico:{title:"Médico",emoji:"🩺",base:"#f7fbff",collar:"#91cbec",accent:"#20
 empresario:{title:"Empresário",emoji:"💼",base:"#354f78",collar:"#fdfdfd",accent:"#dcad3c",type:"tie"}};
 const $=id=>document.getElementById(id),video=$("video"),canvas=$("canvas"),ctx=canvas.getContext("2d");
 let job=new URLSearchParams(location.search).get("job");if(!J[job])job="escritor";
-let stream=null,running=false,front=true,pose=null,points=null,updated=0,detectBusy=false;
+let stream=null,running=false,front=false,pose=null,points=null,updated=0,detectBusy=false,scanReady=false,scanning=false,lastScan=0,lastQrJob=null;
+const scanCanvas=document.createElement("canvas"),scanCtx=scanCanvas.getContext("2d",{willReadFrequently:true});
+async function loadQr(){
+  if(window.jsQR){scanReady=true;return}
+  try {
+    await new Promise((resolve,reject)=>{const script=document.createElement("script");script.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";script.onload=resolve;script.onerror=reject;document.head.appendChild(script)});
+    scanReady=typeof jsQR==="function";if(scanReady) status("QR Code ativado: aponte a câmera para o código");
+  } catch(err){status("Leitor QR indisponível. Conecte o celular à internet.")}
+}
+function decodeJob(raw){
+  if(!raw)return null;
+  try{
+    const u=new URL(raw);
+    if(u.protocol==="santamadre:"&&u.hostname==="profissao") {
+      const q=u.searchParams.get("job");return J[q]?q:null;
+    }
+    const q=u.searchParams.get("job");if(q&&J[q])return q;
+  }catch(e){}
+  const value=raw.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return J[value]?value:null;
+}
+function scanQr(){
+  if(!running||!scanReady||scanning||video.readyState<2||performance.now()-lastScan<350)return;
+  lastScan=performance.now();scanning=true;
+  try {
+    const width=360,height=Math.max(1,Math.round(video.videoHeight*360/video.videoWidth));
+    scanCanvas.width=width;scanCanvas.height=height;
+    scanCtx.drawImage(video,0,0,width,height);
+    const pixels=scanCtx.getImageData(0,0,width,height);
+    const result=jsQR(pixels.data,width,height,{inversionAttempts:"attemptBoth"});
+    if(result){
+      const identified=decodeJob(result.data);
+      if(identified && identified!==lastQrJob){lastQrJob=identified;select(identified);status("QR reconhecido: "+J[identified].title+" ✓")}
+      else if(!identified)status("QR encontrado, mas não é um código das profissões");
+    }
+  }catch(e){status("Não foi possível analisar QR: "+e.message)}
+  finally {scanning=false}
+}
 let size=1,dx=0,dy=0;
 for(const [id,j] of Object.entries(J)){const b=document.createElement("button");b.className="job";b.innerHTML="<i>"+j.emoji+"</i>"+j.title;b.onclick=()=>select(id);b.dataset.id=id;$("jobs").append(b)}
 function select(id){job=id;$("chosen").textContent=J[id].title.toUpperCase();document.querySelectorAll(".job").forEach(b=>b.classList.toggle("active",b.dataset.id===id))}
@@ -35,10 +72,28 @@ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 820">'+
 '<path d="M120 782 L480 782" stroke="#172740" stroke-width="12"/>'+
 '</svg>'}
 const images={};for(const id of Object.keys(J)){images[id]=new Image();images[id].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(costumeSvg(id))}
-function frame(){if(!running)return;if(video.videoWidth){const w=video.videoWidth,h=video.videoHeight;if(canvas.width!==w){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);ctx.save();if(front){ctx.translate(w,0);ctx.scale(-1,1)}ctx.drawImage(video,0,0,w,h);ctx.restore();let cx=w*.5,sy=h*.32,shoulder=w*.35;if($("follow").checked&&points&&performance.now()-updated<1800){cx=points.cx*w;sy=points.sy*h;shoulder=points.shoulder*w}const ww=Math.max(w*.17,shoulder*1.7)*size,hh=ww*820/600;const x=cx-ww/2+dx*w/600,y=sy-ww*.16+dy*h/800;const img=images[job];if(img.complete&&img.naturalWidth)ctx.drawImage(img,x,y,ww,hh)}requestAnimationFrame(frame)}
-async function start(){running=false;if(stream)stream.getTracks().forEach(t=>t.stop());points=null;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:front?"user":"environment"},width:{ideal:720},height:{ideal:960}},audio:false});video.srcObject=stream;await video.play();$("placeholder").style.display="none";$("turn").disabled=false;$("photo").disabled=false;running=true;status("Câmera aberta");requestAnimationFrame(frame);if(!pose)await loadPose();track();}catch(e){status("Erro ao abrir câmera: "+e.message)}}
-async function loadPose(){try{if(!window.Pose){await new Promise((ok,bad)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js";s.onload=ok;s.onerror=bad;document.head.append(s)})}pose=new Pose({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/"+f});pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.45,minTrackingConfidence:.4});pose.onResults(r=>{let v=r.poseLandmarks;if(!v||!v[11]||!v[12])return;const l=v[11],rr=v[12];if(l.visibility<.35||rr.visibility<.35)return;let next={cx:front?1-(l.x+rr.x)/2:(l.x+rr.x)/2,sy:(l.y+rr.y)/2,shoulder:Math.hypot(l.x-rr.x,l.y-rr.y)};if(points)for(const k in next)next[k]=points[k]*.73+next[k]*.27;points=next;updated=performance.now();status("Acompanhando o tronco ✓")});}catch(e){status("Modo manual ativado: sem rastreamento")}}
-async function track(){while(running){if(pose&&video.readyState>=2&&!detectBusy){detectBusy=true;try{await pose.send({image:video})}catch(e){pose=null;status("Use os ajustes manuais")}finally{detectBusy=false}}await new Promise(r=>setTimeout(r,130))}}
+function frame(){if(!running)return;if(video.videoWidth){const w=video.videoWidth,h=video.videoHeight;if(canvas.width!==w){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);ctx.save();if(front){ctx.translate(w,0);ctx.scale(-1,1)}ctx.drawImage(video,0,0,w,h);ctx.restore();let cx=w*.5,sy=h*.34,shoulder=w*.29,torso=h*.23;
+if($("follow").checked&&points&&performance.now()-updated<1800){
+  cx=points.cx*w;sy=points.sy*h;shoulder=points.shoulder*w;torso=points.torso*h;
+}
+// The SVG includes arms and garment: position its shoulder-line at the subject's shoulders.
+// Width is calibrated to shoulder spacing; height also uses shoulder-to-hip length.
+const widthByShoulder=shoulder*2.02;
+const widthByTorso=torso*1.45;
+const natural=Math.max(widthByShoulder,widthByTorso);
+const ww=Math.max(w*.12,Math.min(w*1.35,natural))*size,hh=ww*820/600;
+const x=cx-ww/2+dx*w/600,y=sy-ww*.13+dy*h/800;const img=images[job];if(img.complete&&img.naturalWidth)ctx.drawImage(img,x,y,ww,hh)}requestAnimationFrame(frame)}
+async function start(){running=false;if(stream)stream.getTracks().forEach(t=>t.stop());points=null;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:front?"user":"environment"},width:{ideal:720},height:{ideal:960}},audio:false});video.srcObject=stream;await video.play();$("placeholder").style.display="none";$("turn").disabled=false;$("photo").disabled=false;running=true;status("Aponte para um QR Code; depois enquadre a criança");requestAnimationFrame(frame);
+loadQr();if(!pose)await loadPose();track();}catch(e){status("Erro ao abrir câmera: "+e.message)}}
+async function loadPose(){try{if(!window.Pose){await new Promise((ok,bad)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js";s.onload=ok;s.onerror=bad;document.head.append(s)})}pose=new Pose({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/"+f});pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.45,minTrackingConfidence:.4});pose.onResults(r=>{let v=r.poseLandmarks;if(!v||!v[11]||!v[12]||!v[23]||!v[24])return;
+const l=v[11],rr=v[12],hipL=v[23],hipR=v[24];
+if(l.visibility<.35||rr.visibility<.35||hipL.visibility<.30||hipR.visibility<.30)return;
+const centerX=(l.x+rr.x)/2,shoulderY=(l.y+rr.y)/2,hipY=(hipL.y+hipR.y)/2;
+const shoulderWidth=Math.abs(l.x-rr.x);
+const torsoLen=Math.abs(hipY-shoulderY);
+if(shoulderWidth<.035||torsoLen<.04)return;
+let next={cx:front?1-centerX:centerX,sy:shoulderY,shoulder:shoulderWidth,torso:torsoLen};if(points)for(const k in next)next[k]=points[k]*.73+next[k]*.27;points=next;updated=performance.now();if(!lastQrJob)status("Corpo detectado. Agora aponte para o QR Code da profissão.")});}catch(e){status("Modo manual ativado: sem rastreamento")}}
+async function track(){while(running){scanQr();if(pose&&video.readyState>=2&&!detectBusy){detectBusy=true;try{await pose.send({image:video})}catch(e){pose=null;status("Use os ajustes manuais")}finally{detectBusy=false}}await new Promise(r=>setTimeout(r,130))}}
 $("start").onclick=start;$("turn").onclick=()=>{front=!front;start()};
 $("photo").onclick=()=>{const url=canvas.toDataURL("image/png");const w=window.open();if(w){w.document.write('<meta name="viewport" content="width=device-width"><body style="background:#111;margin:0"><img src="'+url+'" style="width:100%"><p style="color:white;text-align:center">Toque e segure a imagem para salvar.</p></body>')}else status("Não foi possível abrir a foto")};
 $("size").oninput=e=>{size=e.target.value/100;$("sizeText").textContent=e.target.value+"%"};
