@@ -163,5 +163,11 @@ async function track(){const current=stream;while(running&&stream===current){sca
 $("turn").onclick=()=>{front=!front;start()};
 $("photo").onclick=()=>{const url=canvas.toDataURL("image/png");const w=window.open();if(w){w.document.write('<meta name="viewport" content="width=device-width"><body style="background:#111;margin:0"><img src="'+url+'" style="width:100%"><p style="color:white;text-align:center">Toque e segure a imagem para salvar.</p></body>')}else status("Não foi possível abrir a foto")};
 window.addEventListener("pagehide",()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
-window.addEventListener("load",()=>{start()});
+window.addEventListener("outfit3d-ready",()=>{status("Motor 3D carregado. Aponte para o QR Code.");});
+window.addEventListener("load",()=>{
+  start();
+  setTimeout(()=>{
+    if(!window.outfit3D)status("O motor 3D não carregou. Verifique a conexão com a internet.");
+  },10000);
+});
 </script><script type="module" src="renderer3d.js"></script></body></html>
