@@ -1,15 +1,14 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>Santa Madre • Meu Futuro</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#091b39;color:white;font-family:system-ui,Arial,sans-serif}header{background:#fff;color:#092f6d;padding:13px 15px;text-align:center}header b{font-size:19px}header small{display:block;color:#6c7785;font-size:12px}.wrap{max-width:630px;margin:auto;padding:12px}.jobs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 12px}.job{background:#17345e;border:2px solid #294c80;color:white;padding:8px 3px;border-radius:12px;font-size:12px}.job i{display:block;font-style:normal;font-size:24px}.job.active{border-color:#f6bc3e;background:#34598a}.camera{background:#061123;min-height:330px;width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;position:relative;border:2px solid #294c80}canvas{width:100%;height:100%;object-fit:contain;display:block}.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center;color:#bccce6;gap:12px}.placeholder i{font-size:65px}.pill{position:absolute;top:9px;left:9px;background:#071a34bb;padding:7px 10px;border-radius:30px;font-size:12px}.controls{display:flex;gap:8px;margin-top:10px}.controls button,.extra button{border:0;border-radius:11px;background:#f6ba37;color:#162846;font-weight:700;padding:13px 10px;flex:1}.controls button.secondary{background:#d7e3f9}.controls button:disabled{opacity:.4}.extra{background:#122c53;padding:12px;border-radius:12px;margin-top:12px}.extra label{display:flex;justify-content:space-between;font-size:13px;margin:10px 0 5px}.extra input[type=range]{width:100%;accent-color:#f6bc3e}.hint{font-size:12px;color:#b3c8de;line-height:1.5;margin:10px 0}.status{font-size:12px;text-align:center;color:#f6bc3e;margin:8px}video{display:none}
+*{box-sizing:border-box}body{margin:0;background:#091b39;color:white;font-family:system-ui,Arial,sans-serif}header{background:#fff;color:#092f6d;padding:13px 15px;text-align:center}header b{font-size:19px}header small{display:block;color:#6c7785;font-size:12px}.wrap{max-width:630px;margin:auto;padding:12px}.jobs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 12px}.job{background:#17345e;border:2px solid #294c80;color:white;padding:8px 3px;border-radius:12px;font-size:12px}.job i{display:block;font-style:normal;font-size:24px}.job.active{border-color:#f6bc3e;background:#34598a}.camera{background:#061123;min-height:330px;width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;position:relative;border:2px solid #294c80}canvas{width:100%;height:100%;object-fit:contain;display:block}.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center;color:#bccce6;gap:12px}.placeholder i{font-size:65px}.pill{position:absolute;top:9px;left:9px;background:#071a34bb;padding:7px 10px;border-radius:30px;font-size:12px}.controls{display:flex;gap:8px;margin-top:10px}.controls button,.extra button{border:0;border-radius:11px;background:#f6ba37;color:#162846;font-weight:700;padding:13px 10px;flex:1}.controls button.secondary{background:#d7e3f9}.controls button:disabled{opacity:.4}.extra{background:#122c53;padding:12px;border-radius:12px;margin-top:12px}.extra label{display:flex;justify-content:space-between;font-size:13px;margin:10px 0 5px}.extra input[type=range]{width:100%;accent-color:#f6bc3e}.hint{font-size:12px;color:#b3c8de;line-height:1.5;margin:10px 0}.status{font-size:12px;text-align:center;color:#f6bc3e;margin:8px}video{display:none}
 </style></head><body>
 <header><b>COLÉGIO SANTA MADRE</b><small>MEU FUTURO PROFISSIONAL</small></header>
-<div class="wrap"><div class="jobs" id="jobs"></div>
-<div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="placeholder" id="placeholder"><i>📷</i><strong>Vista seu futuro!</strong><span>Aponte a câmera para um dos quatro QR Codes. A roupa será escolhida automaticamente.</span></div><span class="pill" id="chosen">ESCRITOR</span></div>
-<div class="controls"><button id="start">📷 Abrir câmera</button><button id="turn" class="secondary" disabled>↻ Virar</button><button id="photo" disabled>📸 Foto</button></div>
+<div class="wrap">
+<div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="placeholder" id="placeholder"><i>📷</i><strong>Vista seu futuro!</strong><span>Aponte a câmera para um dos quatro QR Codes. A roupa será escolhida automaticamente.</span></div><span class="pill" id="chosen">APONTE PARA O QR CODE</span></div>
+<div class="controls"><button id="turn" class="secondary" disabled>↻ Trocar câmera</button><button id="photo" disabled>📸 Bater foto</button></div>
 <div class="status" id="status">Aponte para um QR Code para identificar a profissão.</div>
-<div class="extra"><strong>⚙️ Ajustes do uniforme</strong><label>Tamanho <span id="sizeText">100%</span></label><input type="range" id="size" min="40" max="220" value="100"><label>Deslocar para os lados</label><input type="range" id="dx" min="-250" max="250" value="0"><label>Deslocar para cima/baixo</label><input type="range" id="dy" min="-250" max="250" value="0"><label><span>Acompanhar o tronco automaticamente</span><input type="checkbox" id="follow" checked></label><button id="reset">Restaurar posição</button></div>
-<p class="hint">Comece com a câmera traseira, aponte para o QR Code da profissão e depois enquadre a criança inteira (ombros e quadril visíveis). A roupa acompanha automaticamente o tamanho do tronco. Acompanhar braços e pernas ainda não faz parte deste protótipo. O botão Virar troca a câmera. Internet é necessária para detectar QR Codes e corpo.</p></div>
+<p class="hint">Mostre um dos QR Codes à câmera e depois enquadre o corpo da criança ou adulto. A roupa acompanha ombros, braços e tronco automaticamente. Para melhor resultado, mantenha braços e quadril visíveis.</p></div>
 <script>
 const J={
 escritor:{title:"Escritor",emoji:"✍️",base:"#b48d60",collar:"#fff0cf",accent:"#5b3426",type:"tie"},
@@ -56,9 +55,8 @@ function scanQr(){
   }catch(e){status("Não foi possível analisar QR: "+e.message)}
   finally {scanning=false}
 }
-let size=1,dx=0,dy=0;
-for(const [id,j] of Object.entries(J)){const b=document.createElement("button");b.className="job";b.innerHTML="<i>"+j.emoji+"</i>"+j.title;b.onclick=()=>select(id);b.dataset.id=id;$("jobs").append(b)}
-function select(id){job=id;$("chosen").textContent=J[id].title.toUpperCase();document.querySelectorAll(".job").forEach(b=>b.classList.toggle("active",b.dataset.id===id))}
+
+function select(id){job=id;$("chosen").textContent=J[id].title.toUpperCase()}
 select(job);
 function status(s){$("status").textContent=s}
 function costumeSvg(id){const a=J[id],coat=id==="medico",robe=id==="advogado";
@@ -72,17 +70,74 @@ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 820">'+
 '<path d="M120 782 L480 782" stroke="#172740" stroke-width="12"/>'+
 '</svg>'}
 const images={};for(const id of Object.keys(J)){images[id]=new Image();images[id].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(costumeSvg(id))}
-function frame(){if(!running)return;if(video.videoWidth){const w=video.videoWidth,h=video.videoHeight;if(canvas.width!==w){canvas.width=w;canvas.height=h}ctx.clearRect(0,0,w,h);ctx.save();if(front){ctx.translate(w,0);ctx.scale(-1,1)}ctx.drawImage(video,0,0,w,h);ctx.restore();let cx=w*.5,sy=h*.34,shoulder=w*.29,torso=h*.23;
-if($("follow").checked&&points&&performance.now()-updated<1800){
-  cx=points.cx*w;sy=points.sy*h;shoulder=points.shoulder*w;torso=points.torso*h;
+
+// Coordinates from MediaPipe are mapped into the exact 9:16 camera crop.
+function mapJoint(j,w,h,scale,ox,oy){
+  let x=j.x*video.videoWidth*scale-ox;
+  if(front)x=w-x;
+  return {x,y:j.y*video.videoHeight*scale-oy,confidence:j.visibility??1};
 }
-// The SVG includes arms and garment: position its shoulder-line at the subject's shoulders.
-// Width is calibrated to shoulder spacing; height also uses shoulder-to-hip length.
-const widthByShoulder=shoulder*2.02;
-const widthByTorso=torso*1.45;
-const natural=Math.max(widthByShoulder,widthByTorso);
-const ww=Math.max(w*.12,Math.min(w*1.35,natural))*size,hh=ww*820/600;
-const x=cx-ww/2+dx*w/600,y=sy-ww*.13+dy*h/800;const img=images[job];if(img.complete&&img.naturalWidth)ctx.drawImage(img,x,y,ww,hh)}requestAnimationFrame(frame)}
+function shape(vertices,color,stroke="#142638",line=2){
+  ctx.beginPath();vertices.forEach((v,i)=>i?ctx.lineTo(v.x,v.y):ctx.moveTo(v.x,v.y));ctx.closePath();
+  ctx.fillStyle=color;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}
+}
+function segment(a,b,wa,wb,color){
+  const vx=b.x-a.x,vy=b.y-a.y,length=Math.hypot(vx,vy)||1,nx=-vy/length,ny=vx/length;
+  const poly=[{x:a.x+nx*wa/2,y:a.y+ny*wa/2},{x:a.x-nx*wa/2,y:a.y-ny*wa/2},
+    {x:b.x-nx*wb/2,y:b.y-ny*wb/2},{x:b.x+nx*wb/2,y:b.y+ny*wb/2}];
+  shape(poly,color);
+}
+function midpoint(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
+function lerp(a,b,t){return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t}}
+function drawClothing(p,w,h,scale,ox,oy){
+  if(!lastQrJob || !p)return;
+  const ids=[11,12,13,14,15,16,23,24];
+  if(ids.some(id=>!p[id]||p[id].visibility<.35))return;
+  const j=id=>mapJoint(p[id],w,h,scale,ox,oy);
+  const LS=j(11),RS=j(12),LE=j(13),RE=j(14),LW=j(15),RW=j(16),LH=j(23),RH=j(24);
+  const shoulderWidth=Math.hypot(LS.x-RS.x,LS.y-RS.y);
+  const torsoHeight=Math.hypot(midpoint(LS,RS).x-midpoint(LH,RH).x,midpoint(LS,RS).y-midpoint(LH,RH).y);
+  if(shoulderWidth<22||torsoHeight<25)return;
+  const outfit=J[job],coat=job==="medico";
+  const upper=Math.max(8,shoulderWidth*.28),fore=Math.max(7,shoulderWidth*.22);
+  // Sleeve panels have separate joints, so raising an arm bends the fabric.
+  for(const [a,b,c] of [[LS,LE,LW],[RS,RE,RW]]){
+    segment(a,b,upper,upper*.78,outfit.base);
+    segment(b,c,fore,fore*.66,outfit.base);
+    segment(lerp(b,c,.88),c,fore*.7,fore*.63,coat?"#c8e5f4":outfit.collar);
+  }
+  const hipL=lerp(LH,RH,-.1),hipR=lerp(RH,LH,-.1);
+  shape([LS,RS,hipR,hipL],outfit.base);
+  const neck=midpoint(LS,RS),centerHip=midpoint(LH,RH);
+  const leftLap=lerp(LS,neck,.42),rightLap=lerp(RS,neck,.42);
+  if(coat){
+    shape([leftLap,neck,centerHip,lerp(LH,centerHip,.16)],"#ffffff");
+    shape([neck,rightLap,lerp(RH,centerHip,.16),centerHip],"#eefaff");
+    ctx.lineWidth=Math.max(2,shoulderWidth*.035);ctx.strokeStyle="#69a9ce";ctx.beginPath();ctx.moveTo(neck.x,neck.y);ctx.lineTo(centerHip.x,centerHip.y);ctx.stroke();
+    ctx.fillStyle="#168bbb";ctx.beginPath();ctx.arc(lerp(neck,centerHip,.60).x+shoulderWidth*.12,lerp(neck,centerHip,.60).y,shoulderWidth*.07,0,Math.PI*2);ctx.fill();
+  }else{
+    shape([leftLap,neck,lerp(neck,centerHip,.33),lerp(LS,LH,.25)],outfit.collar);
+    shape([neck,rightLap,lerp(RS,RH,.25),lerp(neck,centerHip,.33)],outfit.collar);
+    const tieA=lerp(neck,centerHip,.10),tieB=lerp(neck,centerHip,.65),tieW=shoulderWidth*.08;
+    shape([{x:tieA.x-tieW,y:tieA.y},{x:tieA.x+tieW,y:tieA.y},{x:tieB.x+tieW*.7,y:tieB.y},{x:tieB.x,y:tieB.y+tieW},{x:tieB.x-tieW*.7,y:tieB.y}],outfit.accent,null);
+  }
+}
+function frame(){
+  if(!running)return;
+  if(video.videoWidth&&video.videoHeight){
+    const w=720,h=1280;
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+    const scale=Math.max(w/video.videoWidth,h/video.videoHeight);
+    const ox=(video.videoWidth*scale-w)/2,oy=(video.videoHeight*scale-h)/2;
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    if(front){ctx.translate(w,0);ctx.scale(-1,1)}
+    ctx.drawImage(video,-ox,-oy,video.videoWidth*scale,video.videoHeight*scale);
+    ctx.restore();
+    if(points&&performance.now()-updated<1600)drawClothing(points,w,h,scale,ox,oy);
+  }
+  requestAnimationFrame(frame);
+}
 async function start(){running=false;if(stream)stream.getTracks().forEach(t=>t.stop());points=null;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:front?"user":"environment"},width:{ideal:720},height:{ideal:960}},audio:false});video.srcObject=stream;await video.play();$("placeholder").style.display="none";$("turn").disabled=false;$("photo").disabled=false;running=true;status("Aponte para um QR Code; depois enquadre a criança");requestAnimationFrame(frame);
 loadQr();if(!pose)await loadPose();track();}catch(e){status("Erro ao abrir câmera: "+e.message)}}
 async function loadPose(){try{if(!window.Pose){await new Promise((ok,bad)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js";s.onload=ok;s.onerror=bad;document.head.append(s)})}pose=new Pose({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/"+f});pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.45,minTrackingConfidence:.4});pose.onResults(r=>{let v=r.poseLandmarks;if(!v||!v[11]||!v[12]||!v[23]||!v[24])return;
@@ -92,12 +147,12 @@ const centerX=(l.x+rr.x)/2,shoulderY=(l.y+rr.y)/2,hipY=(hipL.y+hipR.y)/2;
 const shoulderWidth=Math.abs(l.x-rr.x);
 const torsoLen=Math.abs(hipY-shoulderY);
 if(shoulderWidth<.035||torsoLen<.04)return;
-let next={cx:front?1-centerX:centerX,sy:shoulderY,shoulder:shoulderWidth,torso:torsoLen};if(points)for(const k in next)next[k]=points[k]*.73+next[k]*.27;points=next;updated=performance.now();if(!lastQrJob)status("Corpo detectado. Agora aponte para o QR Code da profissão.")});}catch(e){status("Modo manual ativado: sem rastreamento")}}
-async function track(){while(running){scanQr();if(pose&&video.readyState>=2&&!detectBusy){detectBusy=true;try{await pose.send({image:video})}catch(e){pose=null;status("Use os ajustes manuais")}finally{detectBusy=false}}await new Promise(r=>setTimeout(r,130))}}
-$("start").onclick=start;$("turn").onclick=()=>{front=!front;start()};
+const next=v.map(point=>point?{x:point.x,y:point.y,visibility:point.visibility??1}:point);
+if(points&&points.length===next.length){for(let i=0;i<next.length;i++)if(next[i]&&points[i]){next[i].x=points[i].x*.7+next[i].x*.3;next[i].y=points[i].y*.7+next[i].y*.3;}}
+points=next;updated=performance.now();if(!lastQrJob)status("Corpo detectado. Agora aponte para o QR Code da profissão.")});}catch(e){status("Falha ao carregar rastreamento corporal; verifique a internet")}}
+async function track(){const current=stream;while(running&&stream===current){scanQr();if(pose&&video.readyState>=2&&!detectBusy){detectBusy=true;try{await pose.send({image:video})}catch(e){pose=null;status("Rastreamento indisponível; reinicie o aplicativo")}finally{detectBusy=false}}await new Promise(r=>setTimeout(r,130))}}
+$("turn").onclick=()=>{front=!front;start()};
 $("photo").onclick=()=>{const url=canvas.toDataURL("image/png");const w=window.open();if(w){w.document.write('<meta name="viewport" content="width=device-width"><body style="background:#111;margin:0"><img src="'+url+'" style="width:100%"><p style="color:white;text-align:center">Toque e segure a imagem para salvar.</p></body>')}else status("Não foi possível abrir a foto")};
-$("size").oninput=e=>{size=e.target.value/100;$("sizeText").textContent=e.target.value+"%"};
-$("dx").oninput=e=>dx=Number(e.target.value);$("dy").oninput=e=>dy=Number(e.target.value);
-$("reset").onclick=()=>{for(const id of ["dx","dy"]){$(id).value=0;$(id).dispatchEvent(new Event("input"))}$("size").value=100;$("size").dispatchEvent(new Event("input"))};
 window.addEventListener("pagehide",()=>{running=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
+window.addEventListener("load",()=>{start()});
 </script></body></html>
