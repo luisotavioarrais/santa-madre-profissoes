@@ -1,75 +1,108 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
 
-const JOBS={
- escritor:{coat:0x9f7348,shirt:0xefd6b0,tie:0x5b3725},
- advogado:{coat:0x1e2737,shirt:0xeaedf5,tie:0x846e41},
- medico:{coat:0xeff7fc,shirt:0xaadceb,tie:0x2697b9},
- empresario:{coat:0x2f4671,shirt:0xf5f5fa,tie:0xcd9e2e}
+// True volumetric meshes: tapered torso, rounded sleeves, lapels and pockets.
+// Each limb has an independent transform driven by MediaPipe skeleton landmarks.
+const outfits={
+ escritor:{fabric:0x987752,shirt:0xf3debe,detail:0x65462b,trim:0xc6a579},
+ advogado:{fabric:0x252a37,shirt:0xffffff,detail:0x6f2638,trim:0xa79570},
+ medico:{fabric:0xe8f4fa,shirt:0xb3dfe8,detail:0x1488ae,trim:0x79b4d0},
+ empresario:{fabric:0x25456f,shirt:0xffffff,detail:0xc99b36,trim:0x527ab2}
 };
 const scene=new THREE.Scene();
-const camera=new THREE.OrthographicCamera(-360,360,640,-640,0.1,2000);
-camera.position.set(0,0,950);
-camera.lookAt(0,0,0);
-const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});
-renderer.setSize(720,1280,false);
-renderer.setPixelRatio(1);
+const cam=new THREE.OrthographicCamera(-360,360,640,-640,1,3000);
+cam.position.set(0,0,1400);cam.lookAt(0,0,0);
+const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true,powerPreference:"low-power"});
+renderer.setSize(720,1280,false);renderer.setPixelRatio(1);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.setClearColor(0x000000,0);
-scene.add(new THREE.HemisphereLight(0xffffff,0x576070,2.1));
-const light=new THREE.DirectionalLight(0xffffff,2.1);light.position.set(-200,400,500);scene.add(light);
-const group=new THREE.Group();scene.add(group);
-const pieces={};
-function part(name,color){
-  const material=new THREE.MeshStandardMaterial({color,roughness:.74,metalness:.03,side:THREE.DoubleSide});
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),material);
-  mesh.name=name;group.add(mesh);pieces[name]=mesh;return mesh;
+scene.add(new THREE.HemisphereLight(0xe5f4ff,0x445068,2.15));
+const key=new THREE.DirectionalLight(0xffffff,3.2);key.position.set(-400,560,850);scene.add(key);
+const rim=new THREE.DirectionalLight(0xd2e8ff,1.2);rim.position.set(350,-250,400);scene.add(rim);
+const root=new THREE.Group();scene.add(root);
+const fabric=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.84,metalness:0,side:THREE.DoubleSide});
+const shirt=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.75,side:THREE.DoubleSide});
+const trim=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.65,side:THREE.DoubleSide});
+const detail=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.55,side:THREE.DoubleSide});
+const buttonsMat=new THREE.MeshStandardMaterial({color:0xd0ad77,roughness:.36,metalness:.25});
+function mesh(geom,material){const m=new THREE.Mesh(geom,material);root.add(m);return m}
+// A real tapered mesh, rather than a flat rectangle. Radius is along X/Z.
+const torso=mesh(new THREE.CylinderGeometry(0.65,0.53,1,14,1,false),fabric);
+const central=mesh(new THREE.CylinderGeometry(.30,.25,1,14,1,false),shirt);
+const leftLap=mesh(new THREE.BoxGeometry(1,1,1),trim);
+const rightLap=mesh(new THREE.BoxGeometry(1,1,1),trim);
+const neckTie=mesh(new THREE.ConeGeometry(1,1,4),detail);
+const arms=[mesh(new THREE.CylinderGeometry(1,1,1,12),fabric),mesh(new THREE.CylinderGeometry(1,1,1,12),fabric),mesh(new THREE.CylinderGeometry(1,1,1,12),fabric),mesh(new THREE.CylinderGeometry(1,1,1,12),fabric)];
+const cuffs=[mesh(new THREE.CylinderGeometry(1,1,1,12),shirt),mesh(new THREE.CylinderGeometry(1,1,1,12),shirt)];
+const pockets=[mesh(new THREE.BoxGeometry(1,1,1),trim),mesh(new THREE.BoxGeometry(1,1,1),trim)];
+const buttons=Array.from({length:4},()=>mesh(new THREE.SphereGeometry(1,10,8),buttonsMat));
+const stethoscope=mesh(new THREE.TorusGeometry(1,.09,6,28),detail);
+const up=new THREE.Vector3(0,1,0);
+const midpoint=(a,b)=>new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
+function segment(m,a,b,radiusA,radiusB,z=0){
+  const start=a.clone();const end=b.clone();start.z=z;end.z=z;
+  const delta=end.clone().sub(start);
+  m.position.copy(start.add(end).multiplyScalar(.5));
+  m.quaternion.setFromUnitVectors(up,delta.clone().normalize());
+  m.scale.set(radiusA,delta.length(),radiusB);
+  m.visible=true;
 }
-for(const name of ['torso','shirt','leftLap','rightLap','tie','upperL','foreL','upperR','foreR','pocketL','pocketR','badge']) part(name,0xffffff);
-function vec(p,w,h,s,ox,oy,front){
-  const x=p.x*w*s-ox;
-  return new THREE.Vector3((front?720-x:x)-360,640-(p.y*h*s-oy),0);
+function at(p,sourceW,sourceH,scale,ox,oy,front){
+  const rawX=p.x*sourceW*scale-ox,rawY=p.y*sourceH*scale-oy;
+  return new THREE.Vector3((front?720-rawX:rawX)-360,640-rawY,0);
 }
-function placeBox(mesh,a,b,width,depth,z=0){
-  const dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy);
-  mesh.position.set((a.x+b.x)/2,(a.y+b.y)/2,z);
-  mesh.rotation.z=Math.atan2(-dx,dy);
-  mesh.scale.set(width,Math.max(length,1),depth);
-}
-function rect(mesh,x,y,z,width,height,depth,color){
-  mesh.visible=true;mesh.material.color.setHex(color);
-  mesh.position.set(x,y,z);mesh.scale.set(Math.max(width,1),Math.max(height,1),depth);mesh.rotation.z=0;
-}
-let active='';
-function render(job,pose,vw,vh,scale,ox,oy,front){
-  if(!JOBS[job]||!pose)return null;
+function render(job,p,sourceW,sourceH,scale,ox,oy,front){
+  if(!outfits[job] || !p)return null;
   const ids=[11,12,13,14,15,16,23,24];
-  if(ids.some(id=>!pose[id]||pose[id].visibility<.35))return null;
-  let P=id=>vec(pose[id],vw,vh,scale,ox,oy,front);
-  let [ls,rs,le,re,lw,rw,lh,rh]=ids.map(P);
-  const shoulder=Math.hypot(ls.x-rs.x,ls.y-rs.y);
-  const hip=((lh.y+rh.y)/2),neck=((ls.y+rs.y)/2);
-  if(shoulder<25||Math.abs(hip-neck)<30)return null;
-  const c=JOBS[job];
-  const center=(a,b)=>new THREE.Vector3((a.x+b.x)/2,(a.y+b.y)/2,0);
-  const shoulderC=center(ls,rs),hipC=center(lh,rh);
-  const torsoH=Math.hypot(shoulderC.x-hipC.x,shoulderC.y-hipC.y);
-  const torsoW=shoulder*1.12;
-  const torso=pieces.torso;torso.material.color.setHex(c.coat);placeBox(torso,shoulderC,hipC,torsoW,shoulder*.18);
-  const shirt=pieces.shirt;shirt.material.color.setHex(c.shirt);placeBox(shirt,shoulderC,hipC,torsoW*.30,shoulder*.17,shoulder*.14);
-  for(const [prefix,a,b,d] of [['upperL',ls,le,shoulder*.28],['foreL',le,lw,shoulder*.23],['upperR',rs,re,shoulder*.28],['foreR',re,rw,shoulder*.23]]){
-    const m=pieces[prefix];m.material.color.setHex(c.coat);m.visible=true;placeBox(m,a,b,d,shoulder*.18,shoulder*.06);
+  if(ids.some(i=>!p[i]||p[i].visibility<.4))return null;
+  const j=i=>at(p[i],sourceW,sourceH,scale,ox,oy,front);
+  const [ls,rs,le,re,lw,rw,lh,rh]=ids.map(j);
+  const shoulderWidth=ls.distanceTo(rs);
+  const top=midpoint(ls,rs),bottom=midpoint(lh,rh),torsoLength=top.distanceTo(bottom);
+  if(shoulderWidth<25||torsoLength<30)return null;
+  const c=outfits[job];
+  fabric.color.setHex(c.fabric);shirt.color.setHex(c.shirt);trim.color.setHex(c.trim);detail.color.setHex(c.detail);
+  // Torso is an elliptical cylinder with visible side depth and surface shading.
+  const angle=Math.atan2(bottom.y-top.y,bottom.x-top.x)-Math.PI/2;
+  torso.position.copy(midpoint(top,bottom));torso.position.z=0;
+  torso.rotation.set(0,0,angle);
+  torso.scale.set(shoulderWidth*.86,torsoLength*1.05,shoulderWidth*.27);
+  central.position.copy(midpoint(top,bottom));central.position.z=shoulderWidth*.17;
+  central.rotation.z=angle;
+  central.scale.set(shoulderWidth*.27,torsoLength*.95,shoulderWidth*.055);
+  for(const [index,a,b,r] of [[0,ls,le,.15],[1,le,lw,.126],[2,rs,re,.15],[3,re,rw,.126]]){
+    const radius=shoulderWidth*r;
+    segment(arms[index],a,b,radius,radius*.8,shoulderWidth*.045);
   }
-  const x=shoulderC.x,y=shoulderC.y,z=shoulder*.20;
-  rect(pieces.leftLap,x-torsoW*.19,y-torsoH*.22,z,torsoW*.24,torsoH*.38,10,c.shirt);
-  rect(pieces.rightLap,x+torsoW*.19,y-torsoH*.22,z,torsoW*.24,torsoH*.38,10,c.shirt);
-  rect(pieces.tie,x,y-torsoH*.36,z+6,torsoW*.10,torsoH*.47,10,c.tie);
-  const doctor=job==='medico';
-  pieces.pocketL.visible=doctor;pieces.pocketR.visible=doctor;pieces.badge.visible=doctor;
-  if(doctor){
-    rect(pieces.pocketL,x-torsoW*.27,y-torsoH*.68,z+9,torsoW*.19,torsoH*.15,8,0xc7e7f6);
-    rect(pieces.pocketR,x+torsoW*.27,y-torsoH*.68,z+9,torsoW*.19,torsoH*.15,8,0xc7e7f6);
-    rect(pieces.badge,x+torsoW*.28,y-torsoH*.24,z+12,torsoW*.12,torsoW*.12,8,c.tie);
+  for(const [k,a,b] of [[0,le,lw],[1,re,rw]]){
+    segment(cuffs[k],b.clone().lerp(a,.12),b,shoulderWidth*.13,shoulderWidth*.11,shoulderWidth*.06);
   }
-  renderer.render(scene,camera);
+  // Raised lapels, necktie and buttons sit in front of the jacket.
+  for(const [m,side] of [[leftLap,-1],[rightLap,1]]){
+    m.visible=true;m.position.set(top.x+side*shoulderWidth*.21,top.y-torsoLength*.19,shoulderWidth*.26);
+    m.scale.set(shoulderWidth*.27,torsoLength*.37,shoulderWidth*.07);
+    m.rotation.z=side*.26+angle;
+  }
+  neckTie.position.set(top.x,top.y-torsoLength*.37,shoulderWidth*.33);
+  neckTie.rotation.set(Math.PI,0,0);
+  neckTie.scale.set(shoulderWidth*.10,torsoLength*.46,shoulderWidth*.07);
+  for(let i=0;i<buttons.length;i++){
+    const m=buttons[i];
+    m.position.set(top.x+shoulderWidth*.16,top.y-torsoLength*(.37+i*.15),shoulderWidth*.36);
+    m.scale.setScalar(shoulderWidth*.024);
+  }
+  for(const [i,side] of [-1,1].entries()){
+    const m=pockets[i];m.position.set(top.x+side*shoulderWidth*.22,top.y-torsoLength*.70,shoulderWidth*.29);
+    m.scale.set(shoulderWidth*.23,torsoLength*.15,shoulderWidth*.07);
+    m.rotation.z=angle;
+    m.visible=job==="medico";
+  }
+  stethoscope.visible=job==="medico";
+  if(stethoscope.visible){
+    stethoscope.position.set(top.x+shoulderWidth*.19,top.y-torsoLength*.42,shoulderWidth*.34);
+    stethoscope.scale.set(shoulderWidth*.14,torsoLength*.20,1);
+  }
+  renderer.render(scene,cam);
   return renderer.domElement;
 }
-window.outfit3D={render,version:'1.5'};
+window.outfit3D={render,version:"1.6",mode:"volumetric"};
+window.dispatchEvent(new Event("outfit3d-ready"));
