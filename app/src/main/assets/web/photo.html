@@ -110,6 +110,8 @@ $("snap").onclick=async()=>{
 $("allow").onclick=generate;$("deny").onclick=()=>{$("consent").style.display="none";photoBlob=null;status("Processamento cancelado; foto não enviada.")};
 $("flip").onclick=()=>{facing=facing==="environment"?"user":"environment";camera()};
 window.addEventListener("pagehide",()=>{active=false;if(stream)stream.getTracks().forEach(t=>t.stop())});
+const initialProfession=new URLSearchParams(location.search).get("job");
+if(JOBS[initialProfession])chooseJob(initialProfession);
 loadScanner();camera();
 </script>
 </body></html>
