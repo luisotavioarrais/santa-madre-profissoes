@@ -1,10 +1,10 @@
 package br.com.santamadre.profissoes;
+
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -15,65 +15,107 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import java.io.InputStream;
+
 public class MainActivity extends Activity {
+  private static final int CAMERA_REQUEST = 77;
+  private static final String ORIGIN = "https://appassets.androidplatform.net";
   private WebView view;
   private PermissionRequest pending;
-  private static final String ORIGIN="https://appassets.androidplatform.net";
-  @Override public void onCreate(Bundle b) {
-    super.onCreate(b);
-    view=new WebView(this);
+
+  @Override public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    view = new WebView(this);
     setContentView(view);
-    WebSettings s=view.getSettings();
-    s.setJavaScriptEnabled(true);
-    s.setDomStorageEnabled(true);
-    s.setMediaPlaybackRequiresUserGesture(false);
-    view.setWebChromeClient(new WebChromeClient(){
-      @Override public void onPermissionRequest(PermissionRequest r){
-        runOnUiThread(()->{
-          boolean camera=false;
-          for(String resource:r.getResources()) if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) camera=true;
-          if(!camera || !ORIGIN.equals(r.getOrigin().toString())){r.deny();return;}
-          if(Build.VERSION.SDK_INT>=23 && checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){
-            pending=r;
-            requestPermissions(new String[]{Manifest.permission.CAMERA},77);
-          } else r.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+    WebSettings settings = view.getSettings();
+    settings.setJavaScriptEnabled(true);
+    settings.setDomStorageEnabled(true);
+    settings.setMediaPlaybackRequiresUserGesture(false);
+    view.setWebChromeClient(new WebChromeClient() {
+      @Override public void onPermissionRequest(PermissionRequest request) {
+        runOnUiThread(() -> {
+          // Grant only the camera resource and only to our packaged internal page.
+          boolean videoRequested = false;
+          for (String resource : request.getResources()) {
+            if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) videoRequested = true;
+          }
+          String origin = request.getOrigin() == null ? "" : request.getOrigin().toString();
+          boolean trusted = origin.equals(ORIGIN) || origin.equals(ORIGIN + "/");
+          if (!videoRequested || !trusted) {
+            request.deny();
+            return;
+          }
+          if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+          } else {
+            if (pending != null) pending.deny();
+            pending = request;
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
+          }
         });
       }
+      @Override public void onPermissionRequestCanceled(PermissionRequest request) {
+        if (pending == request) pending = null;
+      }
     });
-    view.setWebViewClient(new WebViewClient(){
-      @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest req){
-        Uri u=req.getUrl();
-        if(!"appassets.androidplatform.net".equals(u.getHost()) || !u.getPath().startsWith("/assets/"))return null;
-        String p=u.getPath().substring("/assets/".length());
-        if(p.contains(".."))return new WebResourceResponse("text/plain","UTF-8",null);
-        if(p.isEmpty())p="index.html";
-        try{
-          InputStream in=getAssets().open("web/"+p);
-          String mime=p.endsWith(".html")?"text/html":p.endsWith(".js")?"application/javascript":p.endsWith(".css")?"text/css":"text/plain";
-          return new WebResourceResponse(mime,"UTF-8",in);
-        }catch(Exception ex){return new WebResourceResponse("text/plain","UTF-8",null);}
+    view.setWebViewClient(new WebViewClient() {
+      @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+        Uri url = request.getUrl();
+        if (!"https".equals(url.getScheme()) || !"appassets.androidplatform.net".equals(url.getHost()) ||
+            !url.getPath().startsWith("/assets/")) return null;
+        String path = url.getPath().substring("/assets/".length());
+        if (path.contains("..")) return new WebResourceResponse("text/plain", "UTF-8", null);
+        if (path.isEmpty()) path = "index.html";
+        try {
+          InputStream in = getAssets().open("web/" + path);
+          String mime = path.endsWith(".html") ? "text/html" :
+                        path.endsWith(".js") ? "application/javascript" :
+                        path.endsWith(".css") ? "text/css" : "text/plain";
+          return new WebResourceResponse(mime, "UTF-8", in);
+        } catch (Exception e) {
+          return new WebResourceResponse("text/plain", "UTF-8", null);
+        }
       }
     });
     open(getIntent());
-  }
-  private void open(Intent i){
-    String job="escritor";
-    Uri u=i==null?null:i.getData();
-    if(u!=null && "santamadre".equals(u.getScheme()) && "profissao".equals(u.getHost())){
-      String val=u.getQueryParameter("job");
-      if("medico".equals(val)||"advogado".equals(val)||"escritor".equals(val)||"empresario".equals(val))job=val;
-    }
-    view.loadUrl(ORIGIN+"/assets/index.html?job="+job);
-  }
-  @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);open(i);}
-  @Override public void onRequestPermissionsResult(int req,String[] permissions,int[] grants){
-    super.onRequestPermissionsResult(req,permissions,grants);
-    if(req==77&&pending!=null){
-      if(grants.length>0&&grants[0]==PackageManager.PERMISSION_GRANTED)
-        pending.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
-      else{pending.deny();Toast.makeText(this,"Permita o acesso à câmera",Toast.LENGTH_LONG).show();}
-      pending=null;
+    // Ask Android for camera permission upfront; WebView needs a second, site-level grant.
+    if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+      requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
     }
   }
-  @Override protected void onDestroy(){if(view!=null)view.destroy();super.onDestroy();}
+
+  private void open(Intent intent) {
+    String job = "escritor";
+    Uri data = intent == null ? null : intent.getData();
+    if (data != null && "santamadre".equals(data.getScheme()) && "profissao".equals(data.getHost())) {
+      String queryJob = data.getQueryParameter("job");
+      if ("medico".equals(queryJob) || "advogado".equals(queryJob) ||
+          "escritor".equals(queryJob) || "empresario".equals(queryJob)) job = queryJob;
+    }
+    view.loadUrl(ORIGIN + "/assets/index.html?job=" + job);
+  }
+
+  @Override protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    open(intent);
+  }
+
+  @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == CAMERA_REQUEST) {
+      boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+      if (pending != null) {
+        if (granted) pending.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+        else pending.deny();
+        pending = null;
+      }
+      if (!granted) Toast.makeText(this, "Ative a câmera nas permissões do aplicativo.", Toast.LENGTH_LONG).show();
+    }
+  }
+
+  @Override protected void onDestroy() {
+    if (pending != null) { pending.deny(); pending = null; }
+    if (view != null) view.destroy();
+    super.onDestroy();
+  }
 }
